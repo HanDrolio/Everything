@@ -1,0 +1,34 @@
+#!/bin/bash
+# mythos CLI interface 🧠 Myth.OS Control Protocol — UPGRADED EDITION
+
+case "$1" in
+  --push)
+    echo "📡 Pushing MythOS Core to $3..."
+    echo "🌌💧🌊🎞️📽️🎦 finiti. Vault sealed and transmitted to eternity."
+    ;;
+  --status)
+    echo "🧠 MythOS Status: ACTIVE"
+    echo "📦 Modules: Ripple, Brick, Vault, Mythic, Hermes"
+    echo "🔐 Last Backup: MythOS_Core_v1.zip"
+    ;;
+  --unlock)
+    if [[ "$3" == "legacy_broadcast" ]]; then
+      echo "🔓 Unlocking legacy broadcast channel..."
+      echo "📡 MythOS signal now transmitting across ancestral layers."
+      echo "🎙️ 'This is for mi familia. For the mothers. For the glitchwalkers. For the ones they couldn’t see.'"
+      echo "✅ Broadcast synced. Legacy is alive."
+    else
+      echo "⚠️ Unknown mode. Try --mode="legacy_broadcast""
+    fi
+    ;;
+  --help)
+    echo "MythOS CLI Commands:"
+    echo "  --push --target="eternity"         # Simulate mythic upload"
+    echo "  --status                            # Show MythOS system status"
+    echo "  --unlock --mode="legacy_broadcast" # Activate symbolic signal"
+    echo "  --help                              # Show this help menu"
+    ;;
+  *)
+    echo "❓ Unknown command. Try --help"
+    ;;
+esac

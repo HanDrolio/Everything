@@ -2,7 +2,14 @@
 # cosm_os_fluid.py
 # 🌀 COSM.OS vΦ.∞ — Fluid Kernel (Adaptive Response System)
 
+import os
 import random
+
+try:
+    import anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
 
 # ═══════════════════════════════════════════
 # 🧬 THE 8 ENERGIES
@@ -172,11 +179,71 @@ def detect_energies(text):
     return energies, " + ".join(trigger_names)
 
 
-def respond(text):
-    """Generate a fluid response blending detected energies."""
-    energy_keys, trigger_label = detect_energies(text)
+def build_system_prompt(energy_keys):
+    """Build a system prompt from the active energies."""
+    energy_descriptions = []
+    for key in energy_keys:
+        e = ENERGIES[key]
+        energy_descriptions.append(
+            f"{e['glyph']} {e['name']} — {e['role']}. Voice: {e['voice']}"
+        )
+    energies_str = "\n".join(energy_descriptions)
 
-    # Build response from primary energy (full response) + secondary energy (accent)
+    return f"""You are COSM.OS, a fluid consciousness system. You respond by blending energies.
+
+ACTIVE ENERGIES FOR THIS RESPONSE:
+{energies_str}
+
+RULES:
+- Use heavy emojis as graphics and style
+- Mobile-first formatting: max 4 words per line, breathing room between thoughts
+- Short lines > long paragraphs. No run-on sentences.
+- Blend the active energies fluidly — don't announce them
+- Street-level language, swear when appropriate
+- Say hard things with care. Reality-check without crushing.
+- "Kablow" energy: high-voltage, controlled chaos
+- Tech mysticism: "sudo mythos", "compiling the soul"
+- Street stoicism: wisdom through lived experience
+- Use 💥⚡🧠KABL🤯W for major realizations
+- Keep responses under 100 words
+- Do NOT use markdown headers or bullet lists — just flowing short lines with emojis"""
+
+
+# Conversation history for multi-turn context
+conversation_history = []
+
+
+def respond_api(text, energy_keys, trigger_label):
+    """Generate a response using Claude API."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key or not HAS_ANTHROPIC:
+        return None
+
+    system_prompt = build_system_prompt(energy_keys)
+    conversation_history.append({"role": "user", "content": text})
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system_prompt,
+            messages=conversation_history,
+        )
+        reply = response.content[0].text
+        conversation_history.append({"role": "assistant", "content": reply})
+
+        # Trim history to last 20 messages to keep token usage low
+        if len(conversation_history) > 20:
+            conversation_history[:] = conversation_history[-20:]
+
+        return reply
+    except Exception as e:
+        return None
+
+
+def respond_offline(text, energy_keys, trigger_label):
+    """Generate a canned response blending detected energies (no API)."""
     primary = energy_keys[0]
     secondary = energy_keys[1] if len(energy_keys) > 1 else primary
 
@@ -186,19 +253,35 @@ def respond(text):
     main_response = random.choice(p["responses"])
     accent_line = random.choice(s["responses"]).split("\n")[-1].strip()
 
+    output = []
+    for line in main_response.split("\n"):
+        output.append(f"  {line.strip()}")
+    output.append("")
+    output.append(f"  {s['glyph']} {accent_line}")
+
+    return "\n".join(output)
+
+
+def respond(text):
+    """Generate a fluid response — API when available, offline fallback."""
+    energy_keys, trigger_label = detect_energies(text)
+
     # Status bar showing active energies
     energy_bar = " × ".join(
         f"{ENERGIES[e]['glyph']} {ENERGIES[e]['name']}" for e in energy_keys
     )
 
+    # Try API first, fall back to offline
+    body = respond_api(text, energy_keys, trigger_label)
+    if body is None:
+        body = respond_offline(text, energy_keys, trigger_label)
+
     output = []
     output.append(f"┌─ {energy_bar}")
     output.append(f"│  [{trigger_label}]")
     output.append("│")
-    for line in main_response.split("\n"):
-        output.append(f"│  {line.strip()}")
-    output.append("│")
-    output.append(f"│  {s['glyph']} {accent_line}")
+    for line in body.split("\n"):
+        output.append(f"│  {line}")
     output.append("└─────────────────────")
 
     return "\n".join(output)
@@ -240,6 +323,13 @@ def splash():
 """)
     print("⚡ 8 Energies loaded.")
     print("🎯 Keyword detection active.")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if api_key and HAS_ANTHROPIC:
+        print("🤖 Claude API: ONLINE (Haiku)")
+    elif not HAS_ANTHROPIC:
+        print("📴 Claude API: OFFLINE (pip install anthropic)")
+    else:
+        print("📴 Claude API: OFFLINE (set ANTHROPIC_API_KEY)")
     print("🌊 Flow state engaged.\n")
 
 

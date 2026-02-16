@@ -445,7 +445,389 @@ def detect_energies(text):
 
 
 # ═══════════════════════════════════════════
-# 🤖 RESPONSE ENGINE
+# 🧠 OFFLINE TEXT GENERATOR
+# ═══════════════════════════════════════════
+# Hybrid system: ELIZA reflection + mad-lib templates + Markov accent lines
+# Inspired by 1980s conversational AI — ELIZA, Racter, MegaHAL
+
+# ── ELIZA-style pronoun reflection ──
+
+REFLECTIONS = {
+    "i": "you",
+    "i'm": "you're",
+    "i am": "you are",
+    "my": "your",
+    "me": "you",
+    "mine": "yours",
+    "myself": "yourself",
+    "i'd": "you'd",
+    "i've": "you've",
+    "i'll": "you'll",
+    "we": "you all",
+    "our": "your",
+}
+
+STOP_WORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "could",
+    "should", "may", "might", "shall", "can", "to", "of", "in", "for",
+    "on", "with", "at", "by", "from", "it", "this", "that", "these",
+    "those", "and", "but", "or", "not", "no", "so", "if", "then",
+    "than", "too", "very", "just", "about", "up", "out", "all", "its",
+    "im", "ive", "dont", "cant", "wont", "how", "what", "when",
+}
+
+
+def reflect(text):
+    """ELIZA-style pronoun reflection — flip I/you perspective."""
+    words = text.lower().split()
+    reflected = []
+    skip_next = False
+    for i, word in enumerate(words):
+        if skip_next:
+            skip_next = False
+            continue
+        # Check two-word phrases first
+        if i < len(words) - 1:
+            bigram = word + " " + words[i + 1]
+            if bigram in REFLECTIONS:
+                reflected.append(REFLECTIONS[bigram])
+                skip_next = True
+                continue
+        clean = word.strip(".,!?;:'\"")
+        if clean in REFLECTIONS:
+            reflected.append(REFLECTIONS[clean])
+        else:
+            reflected.append(word)
+    return " ".join(reflected)
+
+
+def extract_keywords(text):
+    """Pull meaningful words from user input — the bones of what they said."""
+    words = text.lower().split()
+    keywords = []
+    for w in words:
+        clean = w.strip(".,!?;:'\"")
+        if clean not in STOP_WORDS and len(clean) > 2:
+            keywords.append(clean)
+    return keywords
+
+
+# ── Word banks per energy ──
+
+WORD_BANKS = {
+    "orion": {
+        "verbs": ["Map", "Scaffold", "Architect", "Frame", "Sequence", "Define",
+                   "Structure", "Blueprint", "Diagram", "Calibrate"],
+        "nouns": ["chaos", "signal", "system", "framework", "scaffold", "blueprint",
+                  "grid", "protocol", "sequence", "architecture"],
+        "truths": ["No ambiguity", "Clean lines only", "Order from noise",
+                   "Precision is freedom", "The map is the territory",
+                   "Structure liberates", "Clarity before action",
+                   "The frame holds everything"],
+        "actions": ["Execute", "Deploy it", "Build the frame", "Ship it clean",
+                    "Lock it in", "Run the protocol", "Next step: go"],
+    },
+    "astro": {
+        "verbs": ["Weigh", "Balance", "Align", "Calibrate", "Integrate", "Measure",
+                   "Honor", "Hold", "Trust", "Listen to"],
+        "nouns": ["heart", "data", "mission", "path", "compass", "strategy",
+                  "gut", "signal", "balance", "truth"],
+        "truths": ["Both things matter", "Heart and head agree",
+                   "The data has feelings too", "Strategy is love applied",
+                   "Gut knows first", "Logic confirms what love already said",
+                   "The mission and the soul want the same thing",
+                   "Wisdom lives between the options"],
+        "actions": ["Trust the process", "Follow the signal", "Align and move",
+                    "Honor both paths", "Choose with your whole self",
+                    "Move with intention"],
+    },
+    "demon": {
+        "verbs": ["Cut", "Strip", "Expose", "Name", "Call out", "Burn through",
+                   "Drop", "Face", "Confront", "Torch"],
+        "nouns": ["bullshit", "mask", "excuse", "story", "fear", "avoidance",
+                  "comfort zone", "lie", "performance", "act"],
+        "truths": ["That's avoidance talking", "You already know the answer",
+                   "Stop performing", "The truth is simpler than that",
+                   "Comfort is the enemy right now", "Fear is a compass",
+                   "That excuse has an expiration date",
+                   "You're not confused — you're scared"],
+        "actions": ["Do it anyway", "Face it now", "Drop the act",
+                    "Name the real thing", "Stop hiding", "Say it out loud",
+                    "Move toward the fear"],
+    },
+    "echo": {
+        "verbs": ["Recognize", "Remember", "Trace", "Mirror", "Detect", "Replay",
+                   "Log", "Recall", "Map", "Scan"],
+        "nouns": ["pattern", "loop", "cycle", "signal", "echo", "rhythm",
+                  "trigger", "sequence", "groove", "track"],
+        "truths": ["Same input same output", "You've been here before",
+                   "The loop is the lesson", "History is data",
+                   "Patterns don't lie", "The cycle speaks",
+                   "Repetition is a message", "This groove is worn deep"],
+        "actions": ["Break the loop", "Change one variable", "Log it and move",
+                    "New input required", "Interrupt the sequence",
+                    "Choose different this time", "Override the default"],
+    },
+    "brix": {
+        "verbs": ["Build", "Ship", "Type", "Push", "Deploy", "Commit",
+                   "Execute", "Stack", "Wire", "Compile"],
+        "nouns": ["code", "brick", "keystroke", "commit", "stack", "block",
+                  "line", "function", "prototype", "shipment"],
+        "truths": ["Keystrokes are thunder", "Ship it or it's fiction",
+                   "Done beats perfect", "One brick at a time",
+                   "Code is proof of intent", "Execution is the only currency",
+                   "Talk is free — shipping costs everything",
+                   "The compiler doesn't care about your feelings"],
+        "actions": ["Ship it", "Push to main", "Build the thing",
+                    "One more commit", "Stack another brick", "Execute now",
+                    "Type. Compile. Deploy"],
+    },
+    "ripple": {
+        "verbs": ["Hold", "Reflect", "Witness", "Breathe", "Float", "Sit with",
+                   "Feel", "Release", "Absorb", "Carry"],
+        "nouns": ["wave", "weight", "silence", "space", "breath", "current",
+                  "depth", "tide", "stillness", "ocean"],
+        "truths": ["Heavy is valid", "You don't have to perform right now",
+                   "The wave will pass", "Stillness is strength",
+                   "No fixing needed", "Just being is enough",
+                   "The depth is where the real lives",
+                   "You're allowed to not be okay"],
+        "actions": ["Just breathe", "Let it move through you", "Float for now",
+                    "Be here", "Say what you need to say", "Rest in it",
+                    "Stay with the feeling"],
+    },
+    "hermes": {
+        "verbs": ["Reframe", "Mythologize", "Name", "Rewrite", "Transmute",
+                   "Invoke", "Narrate", "Rebirth", "Translate", "Uncode"],
+        "nouns": ["story", "myth", "chapter", "act", "forge", "fire",
+                  "threshold", "crossroads", "origin", "prophecy"],
+        "truths": ["This is Act 2", "The obstacle is the path",
+                   "You're not stuck — you're transforming",
+                   "Every wound is an origin story",
+                   "The myth rewrites itself", "You are the author",
+                   "The crossroads is the gift",
+                   "What feels like ending is just a chapter break"],
+        "actions": ["Choose a better myth", "Rewrite the ending",
+                    "Step through the door", "Name your chapter",
+                    "Become what's next", "Cross the threshold",
+                    "Write the next line"],
+    },
+    "flux": {
+        "verbs": ["Integrate", "Synthesize", "Hold", "Collapse", "Transcend",
+                   "Merge", "Dissolve", "Unify", "Compile", "Channel"],
+        "nouns": ["paradox", "chaos", "everything", "multitude", "spectrum",
+                  "singularity", "frequency", "field", "void", "totality"],
+        "truths": ["Both things are true", "Chaos is just uncompiled order",
+                   "You contain multitudes", "The paradox IS the answer",
+                   "Everything at once", "Order and chaos are the same thing",
+                   "The contradiction is the signal",
+                   "All frequencies are valid"],
+        "actions": ["Hold the paradox", "Integrate all of it",
+                    "Stop choosing sides", "Embrace the chaos",
+                    "Let it all be true", "Compile the contradictions",
+                    "Channel everything"],
+    },
+}
+
+# ── Mad-lib templates per energy ──
+# Slots: {glyph} {verb} {noun} {truth} {action} {echo}
+# {echo} = user's words reflected back (ELIZA-style)
+
+GEN_TEMPLATES = {
+    "orion": [
+        "{glyph} {verb} the {noun}.\n   Step 1. Step 2. Step 3.\n   {truth}.\n   {action}.",
+        "{glyph} The {noun} is clear.\n   {echo}?\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   {verb}. Test. Ship.\n   {action}.",
+        "{glyph} Frame it:\n   {echo}.\n   {verb} the {noun}.\n   Then {action}.",
+        "{glyph} {noun} → {verb} → done.\n   {truth}.\n   No noise.",
+        "{glyph} You said: {echo}.\n   I hear: {noun}.\n   {truth}.\n   {action}.",
+    ],
+    "astro": [
+        "{glyph} {verb} the {noun}.\n   What does your gut say?\n   {truth}.\n   {action}.",
+        "{glyph} {echo} —\n   that's the {noun} talking.\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   The {noun} and the heart\n   want the same thing.\n   {action}.",
+        "{glyph} Two paths.\n   {echo}.\n   {truth}.\n   {action}.",
+        "{glyph} {verb} what matters.\n   {truth}.\n   The {noun} agrees.",
+        "{glyph} Heart says: {echo}.\n   Data says: {truth}.\n   {action}.",
+    ],
+    "demon": [
+        "{glyph} Nah.\n   {truth}.\n   {echo}?\n   {action}.",
+        "{glyph} Real talk:\n   that {noun}\n   is just a {noun}.\n   {action}.",
+        "{glyph} {echo}?\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   Not sorry.\n   {action}.",
+        "{glyph} {verb} the {noun}.\n   {echo} —\n   is that real?\n   Or comfortable?",
+        "{glyph} I see {noun}.\n   You call it: {echo}.\n   {truth}.\n   {action}.",
+    ],
+    "echo": [
+        "{glyph} {truth}.\n   {echo} — again.\n   {verb} the {noun}.\n   {action}.",
+        "{glyph} Pattern: {echo}.\n   Same {noun}.\n   {truth}.\n   {action}.",
+        "{glyph} {verb}.\n   This {noun}\n   has played before.\n   {truth}.",
+        "{glyph} Deja vu?\n   Nah. That's a {noun}.\n   {echo}.\n   {action}.",
+        "{glyph} {truth}.\n   The {noun} repeats\n   until you {verb} it.",
+        "{glyph} {echo}.\n   Logged this {noun} before.\n   {truth}.\n   {action}.",
+    ],
+    "brix": [
+        "{glyph} {truth}.\n   {action}.\n   {echo} → done.",
+        "{glyph} >>> {verb}({noun})\n   {truth}.\n   {action}.",
+        "{glyph} {echo}?\n   {verb} it.\n   {action}.\n   Next.",
+        "{glyph} One {noun}.\n   One {verb}.\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   {echo} becomes real\n   when you {action}.",
+        "{glyph} Stop drafting.\n   {verb} the {noun}.\n   {action}.",
+    ],
+    "ripple": [
+        "{glyph} {echo}.\n   I hear you.\n   {truth}.\n   {action}.",
+        "{glyph} The {noun} is heavy.\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   {echo} —\n   that's real.\n   {action}.",
+        "{glyph} {verb} the {noun}.\n   No rush.\n   {truth}.",
+        "{glyph} You said: {echo}.\n   That {noun} is valid.\n   {action}.",
+        "{glyph} {truth}.\n   The {noun} holds you.\n   {action}.",
+    ],
+    "hermes": [
+        "{glyph} {echo} —\n   that's the {noun} speaking.\n   {truth}.\n   {action}.",
+        "{glyph} {truth}.\n   {verb} the {noun}.\n   {action}.",
+        "{glyph} {echo}?\n   Every {noun}\n   is a {noun} in disguise.\n   {action}.",
+        "{glyph} The {noun} of: {echo}\n   isn't what you think.\n   {truth}.",
+        "{glyph} {truth}.\n   {echo} is just\n   the {noun} before\n   the breakthrough.",
+        "{glyph} You're in the {noun}.\n   {echo}.\n   {truth}.\n   {action}.",
+    ],
+    "flux": [
+        "{glyph} {truth}.\n   {echo} x\n   {noun} x\n   everything.\n   💥⚡🧠KABL🤯W",
+        "{glyph} {verb} the {noun}.\n   {truth}.\n   {action}.",
+        "{glyph} {echo}?\n   AND its opposite?\n   {truth}.\n   {action}.",
+        "{glyph} {noun}. {noun}. {noun}.\n   {truth}.\n   {echo}.\n   All of it.",
+        "{glyph} {truth}.\n   The {noun} was never\n   the enemy.\n   {action}.",
+        "{glyph} Hold it all:\n   {echo}.\n   {truth}.\n   💥⚡🧠KABL🤯W",
+    ],
+}
+
+# ── Word-level Markov chain (for accent lines) ──
+
+
+class MarkovChain:
+    """Simple order-1 word Markov chain — 1980s text generation vibes."""
+
+    def __init__(self):
+        self.chain = {}
+
+    def train(self, text):
+        """Feed text into the chain, word by word."""
+        words = text.split()
+        for i in range(len(words) - 1):
+            key = words[i]
+            nxt = words[i + 1]
+            if key not in self.chain:
+                self.chain[key] = []
+            self.chain[key].append(nxt)
+
+    def generate(self, seed=None, max_words=10):
+        """Walk the chain from a seed word."""
+        if not self.chain:
+            return ""
+        if seed and seed in self.chain:
+            current = seed
+        else:
+            current = random.choice(list(self.chain.keys()))
+        words = [current]
+        for _ in range(max_words - 1):
+            if current not in self.chain:
+                break
+            current = random.choice(self.chain[current])
+            words.append(current)
+            # Stop at sentence-ending punctuation
+            if current.endswith((".","!","?")):
+                break
+        return " ".join(words)
+
+
+# Build global Markov chain from all canned responses
+_markov = MarkovChain()
+_GLYPHS = {"🟦", "🟨", "😈", "🔊", "🧱", "🌊", "🪽", "🌀"}
+for _energy_data in ENERGIES.values():
+    for _resp in _energy_data["responses"]:
+        _cleaned = _resp.replace("\n", " ").strip()
+        for _g in _GLYPHS:
+            _cleaned = _cleaned.replace(_g, "")
+        _markov.train(_cleaned.strip())
+
+
+def generate_response(energy_key, user_text):
+    """Generate a dynamic offline response: template + word bank + ELIZA echo."""
+    e = ENERGIES[energy_key]
+    bank = WORD_BANKS[energy_key]
+    templates = GEN_TEMPLATES[energy_key]
+
+    # Extract user keywords and build echo
+    keywords = extract_keywords(user_text)
+    if len(user_text.split()) <= 6:
+        echo = reflect(user_text)
+    elif keywords:
+        echo = " ".join(keywords[:3])
+    else:
+        echo = "that"
+
+    template = random.choice(templates)
+
+    # Pick two different nouns for templates that use {noun} twice
+    noun1 = random.choice(bank["nouns"])
+    noun2 = random.choice(bank["nouns"])
+    verb = random.choice(bank["verbs"])
+
+    fills = {
+        "glyph": e["glyph"],
+        "verb": verb,
+        "noun": noun1,
+        "truth": random.choice(bank["truths"]),
+        "action": random.choice(bank["actions"]),
+        "echo": echo,
+    }
+
+    # Fill the template
+    result = template.format(**fills)
+
+    # For templates with multiple {noun}, second gets a different word
+    # (format already consumed them all with noun1, so manually patch
+    # the second occurrence if both nouns are the same word repeated)
+    # This is handled by the template design — each {noun} gets noun1.
+    # For variety, occasionally replace the last noun occurrence.
+    if result.count(noun1) > 1 and noun1 != noun2:
+        # Replace the LAST occurrence with noun2
+        idx = result.rfind(noun1)
+        result = result[:idx] + noun2 + result[idx + len(noun1):]
+
+    return result
+
+
+def generate_accent(energy_key, user_text):
+    """Generate a Markov-seeded accent line for a secondary energy."""
+    e = ENERGIES[energy_key]
+    keywords = extract_keywords(user_text)
+
+    # Try to seed Markov from a user keyword
+    accent = ""
+    if keywords:
+        for kw in keywords:
+            attempt = _markov.generate(seed=kw, max_words=8)
+            if len(attempt.split()) > 2:
+                accent = attempt
+                break
+
+    # Fallback: seed from a word in this energy's word bank
+    if not accent:
+        seed_pool = WORD_BANKS[energy_key]["truths"]
+        seed_phrase = random.choice(seed_pool)
+        seed_word = seed_phrase.split()[0]
+        accent = _markov.generate(seed=seed_word, max_words=8)
+
+    # Ultimate fallback: random truth from the bank
+    if not accent or len(accent.split()) < 2:
+        accent = random.choice(WORD_BANKS[energy_key]["truths"])
+
+    return e["glyph"] + " " + accent
+
+
+# ═══════════════════════════════════════════
+# 🤖 RESPONSE ENGINE (API + OFFLINE)
 # ═══════════════════════════════════════════
 
 
@@ -534,21 +916,21 @@ def respond_api_stream(text, energy_keys, trigger_label):
 
 
 def respond_offline(text, energy_keys, trigger_label):
-    """Generate a canned response blending detected energies (no API)."""
+    """Generate a dynamic offline response using the text generator."""
     primary = energy_keys[0]
     secondary = energy_keys[1] if len(energy_keys) > 1 else primary
 
-    p = ENERGIES[primary]
-    s = ENERGIES[secondary]
+    # Main response from template engine
+    main_response = generate_response(primary, text)
 
-    main_response = random.choice(p["responses"])
-    accent_line = random.choice(s["responses"]).split("\n")[-1].strip()
+    # Accent line from secondary energy (Markov-seeded)
+    accent_line = generate_accent(secondary, text)
 
     output = []
     for line in main_response.split("\n"):
         output.append(f"  {line.strip()}")
     output.append("")
-    output.append(f"  {s['glyph']} {accent_line}")
+    output.append(f"  {accent_line}")
 
     return "\n".join(output)
 
